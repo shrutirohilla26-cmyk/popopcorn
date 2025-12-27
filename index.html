@@ -42,11 +42,31 @@ let kernels = [], crumbs = [];
 let score = 0, speed = 3, gameOver = false;
 let lastSpawn = 0, spawnInterval = 700;
 let waveTimer = 0;
-
 /* ================= SPAWN POPCORN ================= */
-function spawn(){ kernels.push({ x: Math.random()*canvas.width, y: -20, r: canvas.width*0.022, vy: speed + Math.random()*2, rot: Math.random()*6, scale: 0 }); }
-function spawnCrumbs(x,y){ for(let i=0;i<12;i++){ crumbs.push({ x,y, vx:(Math.random()-0.5)*6, vy:(Math.random()-0.5)*6, life:30, r:2+Math.random()*2 }); } }
+function spawn(){ 
+  kernels.push({ 
+    x: Math.random()*canvas.width, 
+    y: -20, 
+    r: canvas.width*0.022, 
+    vy: speed + Math.random()*2, 
+    rot: Math.random()*6, 
+    scale: 0,
+    wobble: Math.random()*2,      // horizontal zigzag width
+    offset: Math.random()*1000     // phase for sine movement
+  }); 
+}
 
+function spawnCrumbs(x,y){ 
+  for(let i=0;i<12;i++){ 
+    crumbs.push({ 
+      x,y, 
+      vx:(Math.random()-0.5)*6, 
+      vy:(Math.random()-0.5)*6, 
+      life:30, 
+      r:2+Math.random()*2 
+    }); 
+  } 
+}
 /* ================= BACKGROUND ================= */
 function drawBackground(){
   const g = ctx.createLinearGradient(0,0,0,canvas.height);
@@ -115,34 +135,86 @@ function showEndGame(){
 }
 
 /* ================= GAME LOOP ================= */
-function loop(time){
-  if(gameOver) return;
+function loop(time) {
+  if (gameOver) return;
 
+  // Draw background
   drawBackground();
 
-  // Surprise wave every 10 sec
-  if(time - waveTimer > 10000){ speed += 1.5 + Math.random()*2; spawnInterval = Math.max(300, spawnInterval-100); waveTimer=time; }
-
-  if(time - lastSpawn > spawnInterval){ spawn(); lastSpawn=time; speed +=0.05; }
-
-  for(let i=kernels.length-1;i>=0;i--){
-    const k = kernels[i]; if(k.scale<1) k.scale+=0.08; k.y+=k.vy; drawKernel(k);
-
-    if(k.y > bucket.y && k.x > bucket.x - bucket.width/2 && k.x < bucket.x + bucket.width/2){
-      spawnCrumbs(k.x,k.y); kernels.splice(i,1); score++;
-    } else if(k.y > canvas.height){ gameOver=true; showEndGame(); }
+  // Surprise wave: increase speed suddenly every 8s
+  if (time - waveTimer > 8000) {
+    speed += 1.1;
+    waveTimer = time;
   }
 
-  for(let i=crumbs.length-1;i>=0;i--){
-    const c=crumbs[i]; c.x+=c.vx; c.y+=c.vy; c.life--; ctx.fillStyle="#ffe082"; ctx.beginPath(); ctx.arc(c.x,c.y,c.r,0,Math.PI*2); ctx.fill();
-    if(c.life<=0) crumbs.splice(i,1);
+  // Spawn popcorn
+  if (time - lastSpawn > 700) {
+    kernels.push({
+      x: Math.random() * canvas.width,
+      y: -20,
+      r: canvas.width * 0.022,
+      vy: speed + Math.random() * 2,
+      rot: Math.random() * 6,
+      scale: 0,
+      wobble: Math.random() * 4,  // For zigzag
+      offset: Math.random() * 1000
+    });
+    lastSpawn = time;
   }
 
-  drawBucket(); drawScore();
-  requestAnimationFrame(loop);
+  // Update popcorns
+  for (let i = kernels.length - 1; i >= 0; i--) {
+    const k = kernels[i];
+
+    if (k.scale < 1) k.scale += 0.08;
+
+    // Zigzag horizontal movement
+    k.x += Math.sin((k.y + k.offset) * 0.02) * k.wobble;
+
+    k.y += k.vy;
+    drawKernel(k);
+
+    // Check catch
+    if (
+      k.y > bucket.y &&
+      k.x > bucket.x - bucket.width / 2 &&
+      k.x < bucket.x + bucket.width / 2
+    ) {
+      spawnCrumbs(k.x, k.y);
+      kernels.splice(i, 1);
+      score++;
+    } else if (k.y > canvas.height) {
+      gameOver = true;
+    }
+  }
+
+  // Draw crumbs
+  for (let i = crumbs.length - 1; i >= 0; i--) {
+    const c = crumbs[i];
+    c.x += c.vx;
+    c.y += c.vy;
+    c.life--;
+    ctx.fillStyle = "#ffe082";
+    ctx.beginPath();
+    ctx.arc(c.x, c.y, c.r, 0, Math.PI * 2);
+    ctx.fill();
+    if (c.life <= 0) crumbs.splice(i, 1);
+  }
+
+  // Draw bucket & score
+  drawBucket();
+  drawScore();
+
+  // Game over overlay
+if (gameOver) {
+    showEndGame(); // call your fancy score card function
+    return;
 }
-loop();
-</script>
+requestAnimationFrame(loop); // continue the loop
+} // <-- CLOSE THE LOOP FUNCTION
+// Start the game
+requestAnimationFrame(loop);
 
+</script>
 </body>
 </html>
