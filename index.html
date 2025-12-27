@@ -2,115 +2,76 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<title>Popcorn Catch – Cinema Edition (Addictive)</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>Catch The Popcorn – Addictive Edition</title>
 <style>
-html, body { margin:0; padding:0; overflow:hidden; background:#070812; font-family:system-ui; }
-canvas { display:block; }
-#overlay {
-  position: fixed; inset:0; display:none; align-items:center; justify-content:center;
-  background: rgba(0,0,0,0.85); z-index:9999;
-}
-button {
+html,body{margin:0;padding:0;overflow:hidden;background:#000;font-family: system-ui, sans-serif;}
+canvas{display:block;}
+button{
   padding:10px 18px; font-size:16px; border:none; border-radius:12px;
   cursor:pointer; background:#ff6b6b; color:#fff; margin-top:12px;
 }
 </style>
 </head>
 <body>
-<div id="overlay"></div>
-<canvas id="canvas"></canvas>
+
+<canvas id="game"></canvas>
+
 <script>
-/* ================= CANVAS SETUP ================= */
-const canvas = document.getElementById("canvas");
+/* ================= SETUP ================= */
+const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
-function resizeCanvas(){ canvas.width=innerWidth; canvas.height=innerHeight; }
-resizeCanvas();
-window.addEventListener("resize", resizeCanvas);
+function resize(){ canvas.width = innerWidth; canvas.height = innerHeight; }
+addEventListener("resize", resize);
+resize();
 
 /* ================= BUCKET ================= */
-const bucket = {
-  width: canvas.width*0.24,
-  height: canvas.width*0.30,
-  x: canvas.width/2,
-  y: canvas.height - canvas.width*0.30 - 20
-};
-let dragging=false;
-function pointerX(e){ return e.touches? e.touches[0].clientX : e.clientX; }
+const bucket = { width: canvas.width * 0.24, height: canvas.width * 0.30, x: canvas.width/2, y: canvas.height - canvas.width*0.30 - 20 };
+let dragging = false;
+function pointerX(e){ return e.touches ? e.touches[0].clientX : e.clientX; }
 canvas.addEventListener("mousedown",()=>dragging=true);
 canvas.addEventListener("mouseup",()=>dragging=false);
 canvas.addEventListener("mouseleave",()=>dragging=false);
-canvas.addEventListener("mousemove", e=>{ if(dragging) bucket.x=pointerX(e); });
+canvas.addEventListener("mousemove",e=>{ if(dragging) bucket.x = pointerX(e); });
 canvas.addEventListener("touchstart",()=>dragging=true,{passive:false});
 canvas.addEventListener("touchend",()=>dragging=false);
-canvas.addEventListener("touchmove", e=>{ e.preventDefault(); if(dragging) bucket.x=pointerX(e); },{passive:false});
+canvas.addEventListener("touchmove",e=>{ e.preventDefault(); if(dragging) bucket.x = pointerX(e);},{passive:false});
 
-/* ================= GAME VARIABLES ================= */
-let kernels=[], crumbs=[], particles=[], comments=[], heartKernel=null;
-let score=0, combo=0, comboTimer=0, fallSpeed=3, spawnInterval=700, lastSpawn=0, waveTimer=0;
-const HEART_DURATION=1500;
-let gameOver=false;
+/* ================= GAME DATA ================= */
+let kernels = [], crumbs = [];
+let score = 0, speed = 3, gameOver = false;
+let lastSpawn = 0, spawnInterval = 700;
+let waveTimer = 0;
 
-/* ================= SPAWN ================= */
-function spawnPopcorn(time){
-  if(time-lastSpawn>spawnInterval){
-    let isGold=Math.random()<0.03;
-    kernels.push({
-      x:Math.random()*canvas.width,
-      y:-20,
-      r:canvas.width*0.022,
-      vy:fallSpeed+Math.random()*2,
-      rot:Math.random()*6,
-      scale:0,
-      gold:isGold
-    });
-    lastSpawn=time;
-  }
-}
+/* ================= SPAWN POPCORN ================= */
+function spawn(){ kernels.push({ x: Math.random()*canvas.width, y: -20, r: canvas.width*0.022, vy: speed + Math.random()*2, rot: Math.random()*6, scale: 0 }); }
+function spawnCrumbs(x,y){ for(let i=0;i<12;i++){ crumbs.push({ x,y, vx:(Math.random()-0.5)*6, vy:(Math.random()-0.5)*6, life:30, r:2+Math.random()*2 }); } }
 
-function spawnHeart(){
-  if(!heartKernel && Math.random()<0.002){
-    heartKernel={x:canvas.width/2+(Math.random()-0.5)*200, y:canvas.height/2+(Math.random()-0.5)*150, size:24+Math.random()*8, born:performance.now()};
-  }
-}
-
-function spawnCrumbs(x,y){
-  for(let i=0;i<12;i++){
-    crumbs.push({x,y,vx:(Math.random()-0.5)*6, vy:(Math.random()-0.5)*6, life:30, r:2+Math.random()*2});
-  }
-}
-
-function spawnParticles(x,y,color){
-  for(let i=0;i<6;i++) particles.push({x,y,vx:(Math.random()-0.5)*2,vy:-Math.random()*2,alpha:1,color,size:3+Math.random()*2});
-}
-
-function showComment(text,x,y,color="#fff"){
-  comments.push({text,x,y,alpha:1,vy:-0.8,color});
-}
-
-/* ================= DRAW FUNCTIONS ================= */
+/* ================= BACKGROUND ================= */
 function drawBackground(){
   const g = ctx.createLinearGradient(0,0,0,canvas.height);
-  g.addColorStop(0,"#0b0e18"); g.addColorStop(1,"#02030a");
-  ctx.fillStyle=g; ctx.fillRect(0,0,canvas.width,canvas.height);
+  g.addColorStop(0,"#111"); g.addColorStop(1,"#000"); ctx.fillStyle = g; ctx.fillRect(0,0,canvas.width,canvas.height);
+  ctx.globalAlpha = 0.15; ctx.fillStyle = "#fff2cc"; ctx.fillRect(0,0,canvas.width,canvas.height*0.25); ctx.globalAlpha = 1;
+  ctx.fillStyle = "#050505";
+  for(let i=0;i<canvas.width;i+=40){ ctx.beginPath(); ctx.arc(i, canvas.height-35, 30, Math.PI, 0); ctx.fill(); }
 }
 
+/* ================= BUCKET DRAW ================= */
 function drawBucket(){
-  const x=bucket.x-bucket.width/2, y=bucket.y;
+  const x = bucket.x - bucket.width/2, y = bucket.y;
   ctx.fillStyle="#fff"; ctx.fillRect(x,y,bucket.width,bucket.height);
   ctx.fillStyle="#e53935"; for(let i=0;i<bucket.width;i+=bucket.width/5){ ctx.fillRect(x+i,y,bucket.width/10,bucket.height); }
   ctx.fillStyle="#f5f5f5"; ctx.fillRect(x-6,y-14,bucket.width+12,18);
   ctx.fillStyle="rgba(0,0,0,0.3)"; ctx.fillRect(x,y+bucket.height-10,bucket.width,10);
 }
 
+/* ================= POPCORN DRAW ================= */
 function drawKernel(k){
-  ctx.save(); ctx.translate(k.x,k.y); ctx.rotate(k.rot); ctx.scale(k.scale,k.scale);
-  ctx.fillStyle = k.gold?"#ffd700":"#fff8dc"; ctx.strokeStyle="#f1c232"; ctx.lineWidth=2;
+  ctx.save(); ctx.translate(k.x, k.y); ctx.rotate(k.rot); ctx.scale(k.scale,k.scale);
+  ctx.fillStyle = "#fff8dc"; ctx.strokeStyle="#f1c232"; ctx.lineWidth=2;
   ctx.beginPath();
-  ctx.arc(-k.r*0.4,0,k.r*0.6,0,Math.PI*2);
-  ctx.arc(k.r*0.3,-k.r*0.2,k.r*0.7,0,Math.PI*2);
-  ctx.arc(0,k.r*0.3,k.r*0.65,0,Math.PI*2);
-  ctx.arc(-k.r*0.1,-k.r*0.5,k.r*0.55,0,Math.PI*2);
+  ctx.arc(-k.r*0.4,0,k.r*0.6,0,Math.PI*2); ctx.arc(k.r*0.3,-k.r*0.2,k.r*0.7,0,Math.PI*2);
+  ctx.arc(0,k.r*0.3,k.r*0.65,0,Math.PI*2); ctx.arc(-k.r*0.1,-k.r*0.5,k.r*0.55,0,Math.PI*2);
   ctx.fill(); ctx.stroke();
   ctx.fillStyle="rgba(255,200,80,0.6)"; ctx.beginPath();
   ctx.arc(k.r*0.2,k.r*0.1,k.r*0.18,0,Math.PI*2); ctx.arc(-k.r*0.25,k.r*0.2,k.r*0.15,0,Math.PI*2); ctx.fill();
@@ -118,99 +79,70 @@ function drawKernel(k){
   ctx.restore();
 }
 
-function drawHeart(){
-  if(!heartKernel) return;
-  ctx.save(); ctx.translate(heartKernel.x,heartKernel.y);
-  ctx.fillStyle="#ff3b3b"; ctx.beginPath();
-  const s=heartKernel.size;
-  ctx.moveTo(0,-s/2); ctx.bezierCurveTo(s,-s,s,s/2,0,s);
-  ctx.bezierCurveTo(-s,s/2,-s,-s,0,-s/2); ctx.fill(); ctx.restore();
-}
+/* ================= SCORE ================= */
+function drawScore(){ ctx.fillStyle="rgba(0,0,0,0.6)"; ctx.fillRect(20,20,170,45); ctx.fillStyle="#fff"; ctx.font="22px sans-serif"; ctx.fillText("🍿 "+score,45,50); }
 
-function drawParticles(){
-  for(let i=particles.length-1;i>=0;i--){
-    const p=particles[i]; p.x+=p.vx; p.y+=p.vy; p.alpha-=0.03;
-    if(p.alpha<=0) particles.splice(i,1);
-    else{ ctx.fillStyle=`rgba(${p.color.r},${p.color.g},${p.color.b},${p.alpha})`; ctx.beginPath(); ctx.arc(p.x,p.y,p.size,0,Math.PI*2); ctx.fill();}
-  }
-}
-
-function updateComments(){
-  for(let i=comments.length-1;i>=0;i--){
-    const c=comments[i]; c.y+=c.vy; c.alpha-=0.03;
-    if(c.alpha<=0) comments.splice(i,1);
-    else{ ctx.fillStyle=c.color; ctx.globalAlpha=c.alpha; ctx.font="18px system-ui"; ctx.fillText(c.text,c.x,c.y); ctx.globalAlpha=1;}
-  }
-}
-
-/* ================= END GAME ================= */
+/* ================= PERSONALITY ================= */
 function generatePersonality(score){
-  if(score<10) return "Playful & curious 🍿";
-  else if(score<20) return "Determined & focused 💪";
-  else if(score<35) return "Skilled & agile 🏃‍♂️";
-  else return "Legendary Popcorn Master 🌟";
+  if(score<10) return "You're playful and curious! Keep catching more popcorn!";
+  else if(score<20) return "You're determined and focused! Great job!";
+  else if(score<35) return "You're skilled and agile! You're a popcorn master!";
+  else return "Legendary! Nothing can stop your popcorn skills!";
 }
 
-function showEndOverlay(){
-  const overlay=document.getElementById("overlay");
-  overlay.innerHTML="";
-  overlay.style.display="flex";
-  const card=document.createElement("div");
-  card.style.width="90%"; card.style.maxWidth="400px";
-  card.style.background="linear-gradient(135deg,#1a1a1a,#000)";
-  card.style.color="#fff"; card.style.padding="28px";
-  card.style.borderRadius="24px"; card.style.textAlign="center";
-  card.style.boxShadow="0 0 50px rgba(255,200,0,0.45)";
-  overlay.appendChild(card);
+/* ================= END GAME OVERLAY ================= */
+function showEndGame(){
+  const overlay = document.createElement("div");
+  overlay.style.position="fixed"; overlay.style.inset="0";
+  overlay.style.background="rgba(0,0,0,0.95)";
+  overlay.style.display="flex"; overlay.style.alignItems="center"; overlay.style.justifyContent="center";
+  overlay.style.flexDirection="column"; overlay.style.zIndex=9999;
+  document.body.appendChild(overlay);
 
-  const scoreTitle=document.createElement("h2"); scoreTitle.innerText="Your Score"; card.appendChild(scoreTitle);
-  const scoreValue=document.createElement("p"); scoreValue.style.fontSize="28px"; scoreValue.style.fontWeight="bold"; scoreValue.innerText=score; card.appendChild(scoreValue);
+  const card = document.createElement("div");
+  card.style.width="90%"; card.style.maxWidth="400px"; card.style.background="linear-gradient(135deg,#1a1a1a,#000)";
+  card.style.color="#fff"; card.style.padding="28px"; card.style.borderRadius="24px"; card.style.textAlign="center";
+  card.style.boxShadow="0 0 50px rgba(255,200,0,0.45)"; overlay.appendChild(card);
 
-  const personalityTitle=document.createElement("h3"); personalityTitle.innerText="Your Popcorn Personality!"; personalityTitle.style.marginTop="18px"; card.appendChild(personalityTitle);
-  const desc=document.createElement("p"); desc.style.fontSize="18px"; desc.style.margin="8px 0 12px 0"; desc.innerText=generatePersonality(score); card.appendChild(desc);
+  const title = document.createElement("h2"); title.innerText="Your Score"; card.appendChild(title);
+  const scoreElem = document.createElement("p"); scoreElem.style.fontSize="28px"; scoreElem.style.fontWeight="bold";
+  scoreElem.innerText=score; card.appendChild(scoreElem);
 
-  const retryBtn=document.createElement("button"); retryBtn.innerText="PLAY AGAIN"; retryBtn.onclick=()=>location.reload(); card.appendChild(retryBtn);
+  const personalityTitle = document.createElement("h3"); personalityTitle.innerText="Your Popcorn Personality!"; personalityTitle.style.marginTop="18px"; card.appendChild(personalityTitle);
+  const desc = document.createElement("p"); desc.style.fontSize="18px"; desc.style.margin="8px 0 12px 0"; desc.innerText = generatePersonality(score); card.appendChild(desc);
+
+  const btn = document.createElement("button"); btn.innerText="PLAY AGAIN"; btn.onclick=()=>location.reload(); card.appendChild(btn);
 }
 
 /* ================= GAME LOOP ================= */
 function loop(time){
   if(gameOver) return;
+
   drawBackground();
 
-  if(time-lastSpawn>spawnInterval){ spawnPopcorn(time); lastSpawn=time; fallSpeed+=0.05; }
+  // Surprise wave every 10 sec
+  if(time - waveTimer > 10000){ speed += 1.5 + Math.random()*2; spawnInterval = Math.max(300, spawnInterval-100); waveTimer=time; }
 
-  // Popcorn update
+  if(time - lastSpawn > spawnInterval){ spawn(); lastSpawn=time; speed +=0.05; }
+
   for(let i=kernels.length-1;i>=0;i--){
-    const k=kernels[i]; if(k.scale<1) k.scale+=0.08;
-    k.y+=k.vy; drawKernel(k);
-    if(k.y>bucket.y && k.x>bucket.x-bucket.width/2 && k.x<bucket.x+bucket.width/2){
-      spawnCrumbs(k.x,k.y); kernels.splice(i,1); score++; combo++; comboTimer=performance.now();
-      showComment(combo>1?`Combo x${combo}! 🔥`:"+1 🍿", k.x,k.y, combo>1?"#ffdd00":"#fff");
-    } else if(k.y>canvas.height){ gameOver=true; showEndOverlay(); return; }
+    const k = kernels[i]; if(k.scale<1) k.scale+=0.08; k.y+=k.vy; drawKernel(k);
+
+    if(k.y > bucket.y && k.x > bucket.x - bucket.width/2 && k.x < bucket.x + bucket.width/2){
+      spawnCrumbs(k.x,k.y); kernels.splice(i,1); score++;
+    } else if(k.y > canvas.height){ gameOver=true; showEndGame(); }
   }
 
-  // Heart update
-  if(heartKernel){
-    drawHeart();
-    const dx=heartKernel.x-bucket.x, dy=heartKernel.y-bucket.y, catchZone=bucket.width/2;
-    if(Math.abs(dx)<catchZone && Math.abs(dy)<bucket.height/2){ score+=5; spawnParticles(heartKernel.x,heartKernel.y,{r:255,g:59,b:59}); showComment("+5 ❤️",heartKernel.x,heartKernel.y,"#ff4d4d"); combo+=2; comboTimer=performance.now(); heartKernel=null;}
-    else if(performance.now()-heartKernel.born>HEART_DURATION) heartKernel=null;
+  for(let i=crumbs.length-1;i>=0;i--){
+    const c=crumbs[i]; c.x+=c.vx; c.y+=c.vy; c.life--; ctx.fillStyle="#ffe082"; ctx.beginPath(); ctx.arc(c.x,c.y,c.r,0,Math.PI*2); ctx.fill();
+    if(c.life<=0) crumbs.splice(i,1);
   }
 
-  if(performance.now()-comboTimer>1500) combo=0;
-
-  drawParticles();
-  updateComments();
-  drawBucket();
-
-  // Draw score top-left
-  ctx.fillStyle="rgba(0,0,0,0.6)"; ctx.fillRect(20,20,170,45);
-  ctx.fillStyle="#fff"; ctx.font="22px sans-serif"; ctx.fillText("🍿 "+score,45,50);
-
+  drawBucket(); drawScore();
   requestAnimationFrame(loop);
 }
-
 loop();
 </script>
+
 </body>
 </html>
