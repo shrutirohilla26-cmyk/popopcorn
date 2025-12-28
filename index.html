@@ -56,7 +56,18 @@ let explosions = [];
 let lastBombSpawn = 0;
 let bombInterval = 3500; // one bomb every ~3.5 sec
 let gameOverTimer = 0; // frames to show explosion before ending
-
+let gameStarted = false;  // <-- new, to wait for player click
+// ✅ Add this for falling popcorns in start screen
+let startParticles = [];
+for(let i=0;i<50;i++){
+    startParticles.push({
+        x: Math.random()*canvas.width,
+        y: Math.random()*canvas.height,
+        r: 5 + Math.random()*5,
+        vy: 1 + Math.random()*1.5,
+        rot: Math.random()*6
+    });
+}
 
 /* ================= SPAWN POPCORN ================= */
 function spawn(){ 
@@ -118,6 +129,24 @@ function drawKernel(k){
 
 /* ================= SCORE ================= */
 function drawScore(){ ctx.fillStyle="rgba(0,0,0,0.6)"; ctx.fillRect(20,20,170,45); ctx.fillStyle="#fff"; ctx.font="22px sans-serif"; ctx.fillText("🍿 "+score,45,50); }
+
+/* ================= START SCREEN PARTICLE DRAW ================= */
+function drawStartParticles(){
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    drawBackground(); // optional gradient
+    startParticles.forEach(p=>{
+        p.y += p.vy;
+        if(p.y>canvas.height) p.y = -10;
+        ctx.save();
+        ctx.translate(p.x,p.y);
+        ctx.rotate(p.rot);
+        ctx.fillStyle="#fff8dc";
+        ctx.beginPath();
+        ctx.arc(0,0,p.r,0,Math.PI*2);
+        ctx.fill();
+        ctx.restore();
+    });
+}
 
 /* ================= PERSONALITY ================= */
 function generatePersonality(score){
@@ -192,11 +221,50 @@ function spawnExplosion(x, y) {
     });
   }
 }
+function showStartScreen(){
+  const overlay = document.createElement("div");
+  overlay.id = "startScreen";
+  overlay.style.position = "fixed";
+  overlay.style.inset = "0";
+  overlay.style.background = "rgba(0,0,0,0.9)";
+  overlay.style.display = "flex";
+  overlay.style.flexDirection = "column";
+  overlay.style.alignItems = "center";
+  overlay.style.justifyContent = "center";
+  overlay.style.color = "#fff";
+  overlay.style.fontFamily = "sans-serif";
+  overlay.style.zIndex = 9999;
+
+  const title = document.createElement("h1");
+  title.innerText = "🍿 Catch the popcorn… but dodge the bombs! 💣";
+  title.style.textAlign = "center";
+  title.style.marginBottom = "20px";
+  overlay.appendChild(title);
+
+  const btn = document.createElement("button");
+  btn.innerText = "START GAME";
+  btn.style.padding = "12px 24px";
+  btn.style.fontSize = "20px";
+  btn.style.border = "none";
+  btn.style.borderRadius = "12px";
+  btn.style.cursor = "pointer";
+  btn.style.background = "#ff6b6b";
+  btn.style.color = "#fff";
+  btn.onclick = () => {
+    gameStarted = true;
+    document.body.removeChild(overlay);
+    requestAnimationFrame(loop); // start the game loop
+  };
+  overlay.appendChild(btn);
+
+  document.body.appendChild(overlay);
+}
 
 
 /* ================= GAME LOOP ================= */
 function loop(time) {
-  if (gameOver) return;
+  if (!gameStarted || gameOver) return;
+
 
   // 1️⃣ Draw background
   drawBackground();
@@ -311,9 +379,15 @@ if (gameOverTimer > 0) {
   // 10️⃣ Next frame
   requestAnimationFrame(loop);
 }
+showStartScreen();  // <-- shows intro overlay before the game starts
+function startLoop(time){
+    if(gameStarted) return; // stop start screen loop when game starts
+    drawStartParticles();
+    requestAnimationFrame(startLoop);
+}
 
-// Start the game
-requestAnimationFrame(loop);
+// Start the start screen animation
+startLoop();
 
 </script>
 </body>
