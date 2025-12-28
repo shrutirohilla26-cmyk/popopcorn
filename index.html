@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <!-- Google tag (gtag.js) -->
+    <!-- Google tag (gtag.js) -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-QLHJH03531"></script>
 <script>
   window.dataLayer = window.dataLayer || [];
@@ -51,6 +51,13 @@ let kernels = [], crumbs = [];
 let score = 0, speed = 3, gameOver = false;
 let lastSpawn = 0, spawnInterval = 700;
 let waveTimer = 0;
+let bombs = [];
+let explosions = [];
+let lastBombSpawn = 0;
+let bombInterval = 3500; // one bomb every ~3.5 sec
+let gameOverTimer = 0; // frames to show explosion before ending
+
+
 /* ================= SPAWN POPCORN ================= */
 function spawn(){ 
   kernels.push({ 
@@ -64,6 +71,7 @@ function spawn(){
     offset: Math.random()*1000     // phase for sine movement
   }); 
 }
+
 
 function spawnCrumbs(x,y){ 
   for(let i=0;i<12;i++){ 
@@ -143,61 +151,127 @@ function showEndGame(){
   const btn = document.createElement("button"); btn.innerText="PLAY AGAIN"; btn.onclick=()=>location.reload(); card.appendChild(btn);
 }
 
+/* ================= DRAW BOMB FUNCTION ================= */
+function drawBomb(b){
+  // body
+  const g = ctx.createRadialGradient(
+    b.x - b.r/3, b.y - b.r/3, b.r/4,
+    b.x, b.y, b.r
+  );
+  g.addColorStop(0, "#444");
+  g.addColorStop(1, "#000");
+
+  ctx.fillStyle = g;
+  ctx.beginPath();
+  ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+  ctx.fill();
+
+  // subtle highlight
+  ctx.fillStyle = "rgba(255,255,255,0.08)";
+  ctx.beginPath();
+  ctx.arc(b.x - b.r/4, b.y - b.r/4, b.r/3, 0, Math.PI * 2);
+  ctx.fill();
+
+  // fuse (small)
+  ctx.strokeStyle = "#ff9800";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(b.x, b.y - b.r);
+  ctx.lineTo(b.x + 8, b.y - b.r - 10);
+  ctx.stroke();
+}
+function spawnExplosion(x, y) {
+  for (let i = 0; i < 40; i++) {  // 20 → 40 particles
+    explosions.push({
+      x,
+      y,
+      vx: (Math.random() - 0.5) * 12, // speed thoda tez
+      vy: (Math.random() - 0.5) * 12,
+      r: 2 + Math.random() * 4,       // size thoda bada
+      life: 40                        // longer life
+    });
+  }
+}
+
+
 /* ================= GAME LOOP ================= */
 function loop(time) {
   if (gameOver) return;
 
-  // Draw background
+  // 1️⃣ Draw background
   drawBackground();
 
-  // Surprise wave: increase speed suddenly every 8s
+  // 2️⃣ Surprise wave: increase speed every 8s
   if (time - waveTimer > 8000) {
-    speed += 1.1;
+    speed += 2.1;
     waveTimer = time;
   }
 
-  // Spawn popcorn
-  if (time - lastSpawn > 700) {
-    kernels.push({
-      x: Math.random() * canvas.width,
-      y: -20,
-      r: canvas.width * 0.022,
-      vy: speed + Math.random() * 2,
-      rot: Math.random() * 6,
-      scale: 0,
-      wobble: Math.random() * 4,  // For zigzag
-      offset: Math.random() * 1000
-    });
+  // 3️⃣ Spawn popcorn
+  if (time - lastSpawn > spawnInterval) {
+    spawn(); // your spawn() function for kernels
     lastSpawn = time;
   }
 
-  // Update popcorns
+  // 4️⃣ Spawn bombs (after score ≥ 5)
+  if (score >= 5 && time - lastBombSpawn > bombInterval) {
+    bombs.push({
+      x: Math.random() * canvas.width,
+      y: -30,
+      r: canvas.width * 0.02,
+      vy: speed + 3
+    });
+    lastBombSpawn = time;
+  }
+
+  // 5️⃣ Update & draw popcorn
   for (let i = kernels.length - 1; i >= 0; i--) {
     const k = kernels[i];
-
     if (k.scale < 1) k.scale += 0.08;
-
-    // Zigzag horizontal movement
-    k.x += Math.sin((k.y + k.offset) * 0.02) * k.wobble;
-
+    k.x += Math.sin((k.y + k.offset) * 0.02) * k.wobble; // zigzag
     k.y += k.vy;
     drawKernel(k);
 
-    // Check catch
+    // Catch logic
     if (
       k.y > bucket.y &&
-      k.x > bucket.x - bucket.width / 2 &&
-      k.x < bucket.x + bucket.width / 2
+      k.x > bucket.x - bucket.width/2 &&
+      k.x < bucket.x + bucket.width/2
     ) {
       spawnCrumbs(k.x, k.y);
       kernels.splice(i, 1);
       score++;
-    } else if (k.y > canvas.height) {
-      gameOver = true;
-    }
+    } 
+    else if (k.y > canvas.height) {
+  spawnExplosion(k.x, k.y);  // optional, thoda effect
+  kernels.splice(i, 1);       // remove the missed popcorn
+  gameOverTimer = 60;         // delay before showing score card
+}
+
   }
 
-  // Draw crumbs
+  // 6️⃣ Update & draw bombs
+  for (let i = bombs.length - 1; i >= 0; i--) {
+    const b = bombs[i];
+    b.y += b.vy;
+    drawBomb(b);
+
+ // Bomb collision = instant explosion, delay game over
+if (
+  b.y > bucket.y &&
+  b.x > bucket.x - bucket.width/2 &&
+  b.x < bucket.x + bucket.width/2
+) {
+  spawnExplosion(b.x, b.y);
+  bombs.splice(i, 1);
+  gameOverTimer = 60; // ~1 second explosion duration
+}
+
+    // Remove if off screen
+    if (b.y > canvas.height) bombs.splice(i, 1);
+  }
+
+  // 7️⃣ Update & draw crumbs
   for (let i = crumbs.length - 1; i >= 0; i--) {
     const c = crumbs[i];
     c.x += c.vx;
@@ -209,22 +283,38 @@ function loop(time) {
     ctx.fill();
     if (c.life <= 0) crumbs.splice(i, 1);
   }
+// Draw & update explosions
+for (let i = explosions.length - 1; i >= 0; i--) {
+  const e = explosions[i];
+  e.x += e.vx;
+  e.y += e.vy;
+  e.life--;
+  ctx.fillStyle = `rgba(255, ${Math.floor(Math.random()*150)}, 0, ${e.life/40})`;
+  ctx.beginPath();
+  ctx.arc(e.x, e.y, e.r, 0, Math.PI * 2);
+  ctx.fill();
+  if (e.life <= 0) explosions.splice(i, 1);
+}
 
-  // Draw bucket & score
+  // 8️⃣ Draw bucket & score
   drawBucket();
   drawScore();
 
-  // Game over overlay
-if (gameOver) {
-    showEndGame(); // call your fancy score card function
-    return;
+// 9️⃣ Game over overlay
+if (gameOverTimer > 0) {
+  gameOverTimer--;
+  if (gameOverTimer === 0) {
+    gameOver = true;   
+    showEndGame();     // ✅ call here to show score card after explosion
+  }
 }
-requestAnimationFrame(loop); // continue the loop
-} // <-- CLOSE THE LOOP FUNCTION
+  // 10️⃣ Next frame
+  requestAnimationFrame(loop);
+}
+
 // Start the game
 requestAnimationFrame(loop);
 
 </script>
 </body>
 </html>
-
