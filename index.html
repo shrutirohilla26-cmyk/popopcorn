@@ -149,11 +149,37 @@ function drawStartParticles(){
 }
 
 /* ================= PERSONALITY ================= */
-function generatePersonality(score){
-  if(score<10) return "You're playful and curious! Keep catching more popcorn!";
-  else if(score<20) return "You're determined and focused! Great job!";
-  else if(score<35) return "You're skilled and agile! You're a popcorn master!";
-  else return "Legendary! Nothing can stop your popcorn skills!";
+
+function generatePersonality(score) {
+  if (score < 10)
+    return { title: "Rookie", desc: "That was a warm-up round." };
+
+  else if (score < 20)
+    return { title: "Learner", desc: "Getting the hang of it." };
+
+  else if (score < 35)
+    return { title: "Smooth Operator", desc: "Movements felt clean." };
+
+  else if (score < 50)
+    return { title: "Steady Hand", desc: "Good control throughout." };
+
+  else if (score < 70)
+    return { title: "Consistent", desc: "Solid focus maintained." };
+
+  else if (score < 100)
+    return { title: "Locked In", desc: "Strong confident run." };
+
+  else if (score < 150)
+    return { title: "Sharp Mind", desc: "Focused. Clean. Controlled." };
+
+  else if (score < 290)
+    return { title: "Calculated", desc: "This wasn’t luck." };
+
+  else if (score < 350)
+    return { title: "Dominant", desc: "You stayed ahead." };
+
+  else
+    return { title: "Maestro", desc: "The game followed your lead." };
 }
 
 /* ================= END GAME OVERLAY ================= */
@@ -170,14 +196,61 @@ function showEndGame(){
   card.style.color="#fff"; card.style.padding="28px"; card.style.borderRadius="24px"; card.style.textAlign="center";
   card.style.boxShadow="0 0 50px rgba(255,200,0,0.45)"; overlay.appendChild(card);
 
-  const title = document.createElement("h2"); title.innerText="Your Score"; card.appendChild(title);
-  const scoreElem = document.createElement("p"); scoreElem.style.fontSize="28px"; scoreElem.style.fontWeight="bold";
-  scoreElem.innerText=score; card.appendChild(scoreElem);
+/* ===== SCORE BOX ===== */
+const scoreBox = document.createElement("div");
+scoreBox.style.background = "rgba(255,255,255,0.08)";
+scoreBox.style.borderRadius = "16px";
+scoreBox.style.padding = "16px";
+scoreBox.style.marginBottom = "18px";
 
-  const personalityTitle = document.createElement("h3"); personalityTitle.innerText="Your Popcorn Personality!"; personalityTitle.style.marginTop="18px"; card.appendChild(personalityTitle);
-  const desc = document.createElement("p"); desc.style.fontSize="18px"; desc.style.margin="8px 0 12px 0"; desc.innerText = generatePersonality(score); card.appendChild(desc);
+const scoreLabel = document.createElement("p");
+scoreLabel.innerText = "Your Score";
+scoreLabel.style.opacity = "0.8";
+scoreLabel.style.margin = "0";
 
-  const btn = document.createElement("button"); btn.innerText="PLAY AGAIN"; btn.onclick=()=>location.reload(); card.appendChild(btn);
+const scoreElem = document.createElement("p");
+scoreElem.innerText = score;
+scoreElem.style.fontSize = "32px";
+scoreElem.style.fontWeight = "bold";
+scoreElem.style.margin = "6px 0 0 0";
+
+scoreBox.appendChild(scoreLabel);
+scoreBox.appendChild(scoreElem);
+card.appendChild(scoreBox);
+
+
+/* ===== PERSONALITY BOX ===== */
+const personality = generatePersonality(score);
+
+const personalityBox = document.createElement("div");
+personalityBox.style.background = "rgba(255,200,0,0.14)";
+personalityBox.style.borderRadius = "16px";
+personalityBox.style.padding = "16px";
+personalityBox.style.marginBottom = "20px";
+
+const personalityTitle = document.createElement("p");
+personalityTitle.innerText = "Your Popcorn Personality";
+personalityTitle.style.opacity = "0.85";
+personalityTitle.style.margin = "0 0 8px 0";
+
+const word = document.createElement("h4");
+word.innerText = personality.title;
+word.style.fontSize = "22px";
+word.style.margin = "0 0 6px 0";
+
+const desc = document.createElement("p");
+desc.innerText = personality.desc;
+desc.style.fontSize = "16px";
+desc.style.opacity = "0.9";
+desc.style.margin = "0";
+
+personalityBox.appendChild(personalityTitle);
+personalityBox.appendChild(word);
+personalityBox.appendChild(desc);
+
+card.appendChild(personalityBox);
+
+  const btn = document.createElement("button"); btn.innerText="ONE MORE ROUND"; btn.onclick=()=>location.reload(); card.appendChild(btn);
 }
 
 /* ================= DRAW BOMB FUNCTION ================= */
@@ -235,14 +308,22 @@ function showStartScreen(){
   overlay.style.fontFamily = "sans-serif";
   overlay.style.zIndex = 9999;
 
-  const title = document.createElement("h1");
-  title.innerText = "🍿 Catch the popcorn… but dodge the bombs! 💣";
-  title.style.textAlign = "center";
-  title.style.marginBottom = "20px";
-  overlay.appendChild(title);
+const title = document.createElement("h1");
+title.innerText = "Welcome to Popcorn Catch";
+title.style.textAlign = "center";
+title.style.marginBottom = "12px";
+overlay.appendChild(title);
+
+const subtitle = document.createElement("p");
+subtitle.innerText = "Catch falling popcorn and dodge the bombs.";
+subtitle.style.textAlign = "center";
+subtitle.style.fontSize = "16px";
+subtitle.style.opacity = "0.85";
+subtitle.style.marginBottom = "20px";
+overlay.appendChild(subtitle);
 
   const btn = document.createElement("button");
-  btn.innerText = "START GAME";
+  btn.innerText = "LET’S POP";
   btn.style.padding = "12px 24px";
   btn.style.fontSize = "20px";
   btn.style.border = "none";
@@ -319,7 +400,7 @@ function loop(time) {
   }
 
   // 6️⃣ Update & draw bombs
-  for (let i = bombs.length - 1; i >= 0; i--) {
+  for (let i = bombs.length - 2; i >= 0; i--) {
     const b = bombs[i];
     b.y += b.vy;
     drawBomb(b);
